@@ -1,34 +1,7 @@
 (function () {
-
-    String.prototype.format = function (args) {
-        var result = this;
-        if (arguments.length > 0) {
-            if (arguments.length == 1 && typeof (args) == "object") {
-                for (var key in args) {
-                    if (args[key] != undefined) {
-                        var reg = new RegExp("({" + key + "})", "g");
-                        result = result.replace(reg, args[key]);
-                    }
-                }
-            }
-            else {
-                for (var i = 0; i < arguments.length; i++) {
-                    if (arguments[i] != undefined) {
-                        var reg = new RegExp("({[" + i + "]})", "g");
-                        result = result.replace(reg, arguments[i]);
-                    }
-                }
-            }
-        }
-        return result;
-    };
-
-    var pad = function (number) {
-        var r = String(number);
-        if (r.length === 1) {
-            r = '0' + r;
-        }
-        return r;
+    var pad = function (num) {
+        var r = '00' + num;
+        return r.substring(r.length - 2);
     };
 
     Date.prototype.toISOString = function () {
@@ -41,34 +14,10 @@
             + 'Z';
     };
 
-    var CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split('');
-    Math.uuid = function () {
-        var uuid = new Array(36), rnd = 0, r;
-        for (var i = 0; i < 36; i++) {
-            if (i == 8 || i == 13 || i == 18 || i == 23) {
-                uuid[i] = '-';
-            } else if (i == 14) {
-                uuid[i] = '4';
-            } else {
-                if (rnd <= 0x02) rnd = 0x2000000 + (Math.random() * 0x1000000) | 0;
-                r = rnd & 0xf;
-                rnd = rnd >> 4;
-                uuid[i] = CHARS[(i == 19) ? (r & 0x3) | 0x8 : r];
-            }
-        }
-        return uuid.join('');
-    };
-
     var identifier = 'com.weibo.api.AliyunSignature';
 
     var AliyunSignature = function () {
         var sep = '&';
-
-        var percentEncode = function (s) {
-            s = encodeURIComponent(s);
-            s = percent(s);
-            return s;
-        };
 
         var percent = function (s) {
             s = s.replace(/\+/g, '%20');
@@ -77,7 +26,15 @@
             return s;
         };
 
+        var percentEncode = function (s) {
+            s = encodeURIComponent(s);
+            s = percent(s);
+            return s;
+        };
+
         var signParams = function (httpMethod, userParams, keySecret) {
+            // console.log(userParams);
+            // 分离参数KV
             var kvs = userParams.replace(/^&|&$/, '').split(sep);
             var keys = [];
             var params = {};
@@ -89,23 +46,29 @@
                 keys.push(arr[0]);
                 params[arr[0]] = arr[1];
             }
+
+            // 排序
             keys.sort();
+
+            // 规范化字符串
             var sortedParams = [];
+            var encodeKey, encodeValue;
             for (var i = 0; i < keys.length; i++) {
-                var encodeKey = percentEncode(keys[i]);
-                // 先解码(paw默认不编码=)、再编码
-                var encodeValue = percent(encodeURIComponent(decodeURIComponent(params[keys[i]])));
+                encodeKey = percentEncode(keys[i]);
+                encodeValue = percentEncode((params[keys[i]]));
                 sortedParams.push(encodeKey + '=' + encodeValue);
             }
             var canonicalized = percentEncode(sortedParams.join(sep));
             var strToSign = httpMethod + sep + percentEncode('/') + sep + canonicalized;
 
+            // 签名
             var dynamicValue = DynamicValue('com.luckymarmot.HMACDynamicValue', {
                 'input': strToSign,
                 'key': keySecret + sep,
                 'algorithm': 1 // HMAC-SHA1
             });
 
+            // 返回签名值
             return DynamicString(dynamicValue).getEvaluatedString();
         };
 
@@ -117,15 +80,17 @@
                 var c = components[i];
                 if (c) {
                     if (typeof c === 'string') {
-                        newDs.appendString(c);
+                        // Paw的字符串是经过编码的，但是没有对=编码
+                        newDs.appendString(decodeURIComponent(c));
                     } else {
                         if (c.type !== identifier) {
-                            newDs.appendString(encodeURIComponent(c.getEvaluatedString()));
+                            newDs.appendString(c.getEvaluatedString());
                         }
                     }
                 }
             }
             var str = newDs.getEvaluatedString();
+            // console.log(str);
             return str.replace(/^https?:\/\/[^\/]+[\/\?]*/, '').replace(/Signature=&?/, '').replace(/^&|&$/, '');
         };
 
@@ -137,7 +102,7 @@
                     continue;
                 }
                 var value = bodyParameters[key]; // DynamicString
-                params.push("" + key + "=" + encodeURIComponent(value.getEvaluatedString()));
+                params.push(key + "=" + value.getEvaluatedString());
             }
             return params.join(sep);
         };
@@ -146,38 +111,29 @@
             var httpMethod = request.method;
             var userParams = getUserParametersFromUrl(request) + sep + getUserParametersFromBody(request);
             var keyId = env.keyId;
-            var keySecret = env.keySecret;
             var resourceOwnerAccount = env.resourceOwnerAccount;
             var format = 'JSON';
             if (env.format != '') {
                 format = env.format;
             }
             var version = env.version;
-            var signatureMethod = 'HMAC-SHA1';
-            var signatureVersion = '1.0';
-            var timeStamp = new Date().toISOString();
-            var signatureNonce = Math.uuid();
-            var commonParams = ('Format={format}&Version={version}'
-                + '&AccessKeyId={keyId}&SignatureMethod={signatureMethod}'
-                + '&SignatureVersion={signatureVersion}&'
-                + 'SignatureNonce={signatureNonce}&Timestamp={timeStamp}').format({
-                format: format,
-                version: version,
-                keyId: keyId,
-                signatureMethod: signatureMethod,
-                signatureVersion: signatureVersion,
-                signatureNonce: signatureNonce,
-                timeStamp: encodeURIComponent(timeStamp)
-            });
+            var curDate = new Date();
+            var timeStamp = curDate.toISOString();
+            var signatureNonce = curDate.getTime();
+            var commonParams = 'Format=' + format
+                + '&Version=' + version
+                + '&AccessKeyId=' + keyId 
+                + '&SignatureMethod=HMAC-SHA1'
+                + '&SignatureVersion=1.0'
+                + '&SignatureNonce=' + signatureNonce 
+                + '&Timestamp=' + timeStamp;
             if (resourceOwnerAccount != '') {
                 commonParams += '&ResourceOwnerAccount=' + resourceOwnerAccount;
             }
 
-            var signature = signParams(httpMethod, userParams + sep + commonParams, keySecret);
+            var signature = signParams(httpMethod, userParams + sep + commonParams, env.keySecret);
             return encodeURIComponent(signature) + sep + commonParams;
         };
-
-
 
         this.evaluate = function (context) {
             var request = context.getCurrentRequest();
@@ -186,23 +142,16 @@
             }
 
             var httpMethod = request.method;
-            var retStr = '';
-            if (httpMethod === "GET" || httpMethod === "POST") {
-                retStr = evaluateRawString(this, request);
-            } else {
-                retStr = "____Only_Support_GET_POST____";
+            if (httpMethod != "GET" && httpMethod != "POST") {
+                return '';
             }
 
-            return retStr;
+            return evaluateRawString(this, request);
         };
-
-        this.title = function (context) {
-            return "AliyunSignature[" + this.version + "]";
-        }
     };
 
     AliyunSignature.identifier = identifier;
-    AliyunSignature.title = "Aliyun Signature";
+    AliyunSignature.title = "AliyunSignature";
     AliyunSignature.inputs = [
         DynamicValueInput("keyId", "Access Key Id", "String"),
         DynamicValueInput("keySecret", "Access Key Secret", "String"),
@@ -210,5 +159,6 @@
         DynamicValueInput("format", "Format", "String"),
         DynamicValueInput("version", "Version", "String")
     ];
+
     registerDynamicValueClass(AliyunSignature);
 }).call(this);
