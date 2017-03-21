@@ -119,7 +119,7 @@
             var version = env.version;
             var curDate = new Date();
             var timeStamp = curDate.toISOString();
-            var signatureNonce = curDate.getTime();
+            var signatureNonce = "paw-sn-" + curDate.getTime();
             var commonParams = 'Format=' + format
                 + '&Version=' + version
                 + '&AccessKeyId=' + keyId 
