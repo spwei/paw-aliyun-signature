@@ -39,12 +39,15 @@
             var keys = [];
             var params = {};
             for (var i = 0; i < kvs.length; i++) {
-                var arr = kvs[i].split('=');
-                if (arr.length !== 2) {
+                const position = kvs[i].indexOf('=');
+                if (position < 0) {
                     continue;
                 }
-                keys.push(arr[0]);
-                params[arr[0]] = arr[1];
+
+                var key = kvs[i].substring(0, position);
+                keys.push(key);
+                params[key] = kvs[i].substring(position + 1);
+                // console.log(key + "  " + params[key]);
             }
 
             // 排序
@@ -56,6 +59,7 @@
             for (var i = 0; i < keys.length; i++) {
                 encodeKey = percentEncode(keys[i]);
                 encodeValue = percentEncode((params[keys[i]]));
+                // console.log(encodeKey + "  " + encodeValue);
                 sortedParams.push(encodeKey + '=' + encodeValue);
             }
             var canonicalized = percentEncode(sortedParams.join(sep));
