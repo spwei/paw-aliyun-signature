@@ -24,4 +24,4 @@ For [Paw.app](https://luckymarmot.com/paw)
 方式二：和GET一样添加参数，仅仅将超大参数放入UrlEncodeBody中
 
 ## Contributor
-@[SPWei](https://github.com/spwei)
+@[spwei](https://github.com/spwei)
