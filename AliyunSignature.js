@@ -4,57 +4,17 @@
         return r.substring(r.length - 2);
     };
 
-    var str2asc = function str2asc(strstr) {
-        return ("0" + strstr.charCodeAt(0).toString(16)).slice(-2);
-    };
-
-    var asc2str = function asc2str(ascasc) {
-        return String.fromCharCode(ascasc);
-    };
-
     var urlEncode = function UrlEncode(str) {
-        var ret = "";
-        var strSpecial = "!\"#$%&'()*+,/:;<=>?[]^`{|}~%@\\";
-        var tt = "";
-
-        for (var i = 0; i < str.length; i++) {
-            var chr = str.charAt(i);
-            var c = str2asc(chr);
-            tt += chr + ":" + c + "n";
-            if (parseInt("0x" + c) > 0x7f) {
-                ret += "%" + c.slice(0, 2) + "%" + c.slice(-2);
-            } else {
-                if (chr == " ")
-                    ret += "+";
-                else if (strSpecial.indexOf(chr) != -1)
-                    ret += "%" + c.toString(16).toUpperCase();
-                else
-                    ret += chr;
-            }
-        }
-        return ret;
+        var s = encodeURIComponent(str);
+        s = s.replace(/\!/g, '%21');
+        s = s.replace(/\'/g, '%27');
+        s = s.replace(/\(/g, '%28');
+        s = s.replace(/\)/g, '%29');
+        return s;
     };
 
     var urlDecode = function UrlDecode(str) {
-        var ret = "";
-        for (var i = 0; i < str.length; i++) {
-            var chr = str.charAt(i);
-            if (chr == "+") {
-                ret += " ";
-            } else if (chr == "%") {
-                var asc = str.substring(i + 1, i + 3);
-                if (parseInt("0x" + asc) > 0x7f) {
-                    ret += asc2str(parseInt("0x" + asc + str.substring(i + 4, i + 6)));
-                    i += 5;
-                } else {
-                    ret += asc2str(parseInt("0x" + asc));
-                    i += 2;
-                }
-            } else {
-                ret += chr;
-            }
-        }
-        return ret;
+        return decodeURIComponent(str);
     };
 
     Date.prototype.toISOString = function() {
@@ -100,7 +60,7 @@
                 var key = kvs[i].substring(0, position);
                 keys.push(key);
                 params[key] = kvs[i].substring(position + 1);
-                // console.log(key + "  " + params[key]);
+                // console.log(kvs[i] + "  " +key + "  " + params[key]);
             }
 
             // 排序
@@ -111,7 +71,7 @@
             var encodeKey, encodeValue;
             for (var i = 0; i < keys.length; i++) {
                 encodeKey = percentEncode(keys[i]);
-                encodeValue = percentEncode((params[keys[i]]));
+                encodeValue = percentEncode(params[keys[i]]);
                 // console.log(encodeKey + "  " + encodeValue);
                 sortedParams.push(encodeKey + '=' + encodeValue);
             }
@@ -137,6 +97,7 @@
             for (var i = 0; i < ds.length; i++) {
                 var c = components[i];
                 if (c) {
+                    // console.log("c: " + c);
                     if (typeof c === 'string') {
                         // Paw的字符串是经过编码的，但是没有对=编码
                         newDs.appendString(urlDecode(c));
@@ -148,7 +109,7 @@
                 }
             }
             var str = newDs.getEvaluatedString();
-            // console.log(str);
+            // console.log("all: " + str);
             return str.replace(/^https?:\/\/[^\/]+[\/\?]*/, '').replace(/Signature=&?/, '').replace(/^&|&$/, '');
         };
 
