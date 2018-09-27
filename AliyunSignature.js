@@ -52,14 +52,20 @@
             var keys = [];
             var params = {};
             for (var i = 0; i < kvs.length; i++) {
-                const position = kvs[i].indexOf('=');
-                if (position < 0) {
+                var curKv = kvs[i];
+                if (curKv.length <= 0) {
                     continue;
                 }
 
-                var key = kvs[i].substring(0, position);
+                const position = curKv.indexOf('=');
+                if (position < 0) {
+                    keys.push(curKv);
+                    continue;
+                }
+
+                var key = curKv.substring(0, position);
                 keys.push(key);
-                params[key] = kvs[i].substring(position + 1);
+                params[key] = curKv.substring(position + 1);
                 // console.log(kvs[i] + "  " +key + "  " + params[key]);
             }
 
@@ -68,10 +74,14 @@
 
             // 规范化字符串
             var sortedParams = [];
-            var encodeKey, encodeValue;
+            var curValue, encodeKey, encodeValue;
             for (var i = 0; i < keys.length; i++) {
                 encodeKey = percentEncode(keys[i]);
-                encodeValue = percentEncode(params[keys[i]]);
+                curValue = params[keys[i]];
+                encodeValue = "";
+                if (curValue != undefined && curValue.length > 0) {
+                    encodeValue = percentEncode(curValue);
+                }
                 // console.log(encodeKey + "  " + encodeValue);
                 sortedParams.push(encodeKey + '=' + encodeValue);
             }
